@@ -1,7 +1,7 @@
 'use client';
 
 import { useChat } from 'ai/react';
-import { Send, Swords, ShieldAlert, Sparkles, User, RefreshCw } from 'lucide-react';
+import { Send, Swords, ShieldAlert, Sparkles, User, RefreshCw, AlertCircle } from 'lucide-react';
 import { useRef, useEffect } from 'react';
 
 const QUICK_QUERIES = [
@@ -13,12 +13,13 @@ const QUICK_QUERIES = [
 ];
 
 export default function Home() {
-  const { messages, input, setInput, handleInputChange, handleSubmit, isLoading } = useChat();
+  // 多取出 error 狀態，方便在畫面上直接看問題原因
+  const { messages, input, setInput, handleInputChange, handleSubmit, isLoading, error } = useChat();
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isLoading, error]);
 
   return (
     <main className="flex flex-col h-screen max-w-4xl mx-auto p-3 sm:p-6 bg-slate-950 text-slate-100">
@@ -85,6 +86,26 @@ export default function Home() {
             </div>
           ))
         )}
+
+        {/* 載入中提示 */}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-amber-400 text-xs px-4 py-2">
+            <RefreshCw className="animate-spin" size={14} />
+            <span>軍師正在推演戰報與戰法聯動中...</span>
+          </div>
+        )}
+
+        {/* 錯誤訊息顯示區 */}
+        {error && (
+          <div className="flex items-start gap-2 p-4 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-xs">
+            <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-red-300 mb-1">系統連線提示：</p>
+              <p className="break-all">{error.message}</p>
+            </div>
+          </div>
+        )}
+
         <div ref={chatBottomRef} />
       </div>
 
