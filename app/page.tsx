@@ -1,8 +1,7 @@
 'use client';
 
-import { useChat } from 'ai/react';
-import { Send, Swords, ShieldAlert, Sparkles, User, RefreshCw, AlertCircle } from 'lucide-react';
-import { useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Swords, ShieldAlert, Sparkles, User, RefreshCw } from 'lucide-react';
 
 const QUICK_QUERIES = [
   "太尉盾沒有刮骨療毒如何平替？",
@@ -13,13 +12,39 @@ const QUICK_QUERIES = [
 ];
 
 export default function Home() {
-  // 多取出 error 狀態，方便在畫面上直接看問題原因
-  const { messages, input, setInput, handleInputChange, handleSubmit, isLoading, error } = useChat();
+  const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading, error]);
+  }, [messages, isLoading]);
+
+  const handleSend = async (textToSend?: string) => {
+    const query = textToSend || input;
+    if (!query.trim() || isLoading) return;
+
+    const userMsg = { role: 'user', content: query };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newMessages }),
+      });
+      const replyText = await res.text();
+      setMessages([...newMessages, { role: 'assistant', content: replyText }]);
+    } catch (e: any) {
+      setMessages([...newMessages, { role: 'assistant', content: `連線失敗：${e.message}` }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <main className="flex flex-col h-screen max-w-4xl mx-auto p-3 sm:p-6 bg-slate-950 text-slate-100">
@@ -32,7 +57,7 @@ export default function Home() {
             <h1 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
               三戰戰略軍師 AI
               <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                免費軍師版
+                穩定版
               </span>
             </h1>
             <p className="text-xs text-slate-400">配將推演 · 核心平替 · 戰法聯動 · 速度加點</p>
@@ -44,7 +69,7 @@ export default function Home() {
         {QUICK_QUERIES.map((q, idx) => (
           <button
             key={idx}
-            onClick={() => setInput(q)}
+            onClick={() => handleSend(q)}
             className="whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-1.5 rounded-full transition flex items-center gap-1.5"
           >
             <Sparkles size={12} className="text-amber-400" />
@@ -60,9 +85,9 @@ export default function Home() {
             <p className="text-sm">請輸入你想配將的陣容，或點選上方快捷按鈕測試。</p>
           </div>
         ) : (
-          messages.map((m) => (
+          messages.map((m, idx) => (
             <div
-              key={m.id}
+              key={idx}
               className={`flex gap-3 p-4 rounded-xl text-sm leading-relaxed ${
                 m.role === 'user'
                   ? 'bg-amber-500/10 border border-amber-500/20 ml-8 sm:ml-20'
@@ -87,7 +112,6 @@ export default function Home() {
           ))
         )}
 
-        {/* 載入中提示 */}
         {isLoading && (
           <div className="flex items-center gap-2 text-amber-400 text-xs px-4 py-2">
             <RefreshCw className="animate-spin" size={14} />
@@ -95,24 +119,19 @@ export default function Home() {
           </div>
         )}
 
-        {/* 錯誤訊息顯示區 */}
-        {error && (
-          <div className="flex items-start gap-2 p-4 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-xs">
-            <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-red-300 mb-1">系統連線提示：</p>
-              <p className="break-all">{error.message}</p>
-            </div>
-          </div>
-        )}
-
         <div ref={chatBottomRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSend();
+        }}
+        className="mt-3 flex gap-2"
+      >
         <input
           value={input}
-          onChange={handleInputChange}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="例如：司馬盾沒有草船和軍民，暫避給了麒麟弓，滿寵曹操該帶什麼？"
           className="flex-1 bg-slate-900 border border-slate-800 focus:border-amber-500/60 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
           disabled={isLoading}
