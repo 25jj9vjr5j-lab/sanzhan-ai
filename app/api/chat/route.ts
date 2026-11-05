@@ -4,22 +4,23 @@ import { SANZHAN_SYSTEM_PROMPT } from '@/config/prompts';
 
 export const runtime = 'edge';
 
-const githubModels = createOpenAI({
-  baseURL: 'https://models.inference.ai.azure.com',
-  apiKey: process.env.GITHUB_TOKEN,
+// 使用 Hugging Face 官方免費的 OpenAI 相容路由器
+const huggingface = createOpenAI({
+  baseURL: 'https://router.huggingface.co/novita/v1',
+  apiKey: process.env.HF_TOKEN,
 });
 
 export async function POST(req: Request) {
   try {
-    if (!process.env.GITHUB_TOKEN) {
-      return new Response('尚未設定 GITHUB_TOKEN 環境變數', { status: 500 });
+    if (!process.env.HF_TOKEN) {
+      return new Response('尚未在 Vercel 設定 HF_TOKEN 環境變數', { status: 500 });
     }
 
     const { messages } = await req.json();
 
     const result = await streamText({
-      // 關鍵修正：加上 .chat() 強制使用標準對話協定，解決 GitHub Models 0 回覆問題
-      model: githubModels.chat('gpt-4o-mini'),
+      // 調用 Meta 開源最新、中文理解極佳的 Llama 3.3 70B 模型
+      model: huggingface.chat('meta-llama/Llama-3.3-70B-Instruct'),
       system: SANZHAN_SYSTEM_PROMPT,
       messages,
       temperature: 0.3,
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
     return result.toDataStreamResponse();
   } catch (error: any) {
-    return new Response(error?.message || '連線異常，請檢查 GITHUB_TOKEN。', {
+    return new Response(error?.message || '連線異常，請檢查 HF_TOKEN。', {
       status: 500,
     });
   }
