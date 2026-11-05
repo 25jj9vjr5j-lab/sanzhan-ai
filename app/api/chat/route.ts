@@ -9,10 +9,10 @@ export async function POST(req: Request) {
     const token = process.env.HF_TOKEN || process.env.GITHUB_TOKEN;
 
     if (!token) {
-      return new Response(
-        '未檢測到 Token，請在 Vercel 設定 HF_TOKEN 或 GITHUB_TOKEN',
-        { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
-      );
+      return new Response('未設定 HF_TOKEN 或 GITHUB_TOKEN', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      });
     }
 
     const { messages } = await req.json();
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     });
 
     const result = await streamText({
-      model: provider.chat('meta-llama/Llama-3.2-3B-Instruct'),
+      model: provider.chat('Qwen/Qwen2.5-72B-Instruct'),
       system: SANZHAN_SYSTEM_PROMPT,
       messages,
       temperature: 0.3,
@@ -31,10 +31,9 @@ export async function POST(req: Request) {
 
     return result.toDataStreamResponse();
   } catch (err: any) {
-    return new Response(`連線錯誤原因：${err?.message || String(err)}`, {
+    return new Response(String(err?.message || err), {
       status: 200,
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   }
-}
 }
