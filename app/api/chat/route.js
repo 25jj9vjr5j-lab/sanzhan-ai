@@ -1,5 +1,4 @@
-// 核心絕招：拋棄故障的 Node 伺服器，直接切換到 Cloudflare 骨幹 Edge 節點！
-export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 const SANZHAN_PROMPT = `
 你是一位精通手機遊戲《三國志·戰略版》的配將導師與軍師助理。
@@ -11,24 +10,23 @@ const SANZHAN_PROMPT = `
 
 export async function POST(req) {
   try {
-    const rawToken = process.env.GITHUB_TOKEN || process.env.HF_TOKEN || '';
+    const rawToken = process.env.GITHUB_TOKEN || '';
     const token = rawToken.replace(/[^a-zA-Z0-9_-]/g, '');
 
     if (!token) {
-      return new Response('【系統提示】：未讀取到 GITHUB_TOKEN', { 
-        status: 200, 
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
+      return new Response('【系統提示】：Vercel 尚未讀取到 GITHUB_TOKEN 環境變數', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       });
     }
 
     const { messages } = await req.json();
 
-    // 在 Edge 環境下，內建的 fetch 是最快且不會報錯的
     const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -41,25 +39,24 @@ export async function POST(req) {
     });
 
     if (!response.ok) {
-       const errorText = await response.text();
-       return new Response(`【微軟伺服器報錯 ${response.status}】：${errorText}`, { 
-         status: 200, 
-         headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
-       });
+      const errText = await response.text();
+      return new Response(`【API 呼叫失敗 ${response.status}】：${errText}`, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      });
     }
 
     const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content || '軍師無回應';
-    
-    return new Response(reply, { 
-      status: 200, 
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
-    });
+    const reply = data.choices?.[0]?.message?.content || '軍師暫無回應';
 
+    return new Response(reply, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
   } catch (err) {
-    return new Response(`【Edge 網路異常】：${err.message}`, { 
-      status: 200, 
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
+    return new Response(`【伺服器內部異常】：${err.message}`, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   }
 }
