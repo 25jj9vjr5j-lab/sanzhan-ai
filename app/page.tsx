@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Swords, ShieldAlert, Sparkles, User, RefreshCw } from 'lucide-react';
-import { askJunshi } from './actions';
 
 const QUICK_QUERIES = [
   "太尉盾沒有刮骨療毒如何平替？",
@@ -33,11 +32,15 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // 直接呼叫後端函數，不再經過 api 路由，徹底解決 404 問題
-      const replyText = await askJunshi(newMessages);
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newMessages }),
+      });
+      const replyText = await res.text();
       setMessages([...newMessages, { role: 'assistant', content: replyText }]);
     } catch (e: any) {
-      setMessages([...newMessages, { role: 'assistant', content: `執行失敗：${e.message}` }]);
+      setMessages([...newMessages, { role: 'assistant', content: `連線失敗：${e.message}` }]);
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +57,7 @@ export default function Home() {
             <h1 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
               三戰戰略軍師 AI
               <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                極速終極版
+                純淨 API 版
               </span>
             </h1>
             <p className="text-xs text-slate-400">配將推演 · 核心平替 · 戰法聯動 · 速度加點</p>
