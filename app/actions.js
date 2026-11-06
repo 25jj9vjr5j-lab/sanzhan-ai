@@ -10,19 +10,19 @@ const SANZHAN_PROMPT = `
 
 export async function askJunshi(messages) {
   try {
-    // 優先讀取 GITHUB_TOKEN
-    const token = process.env.GITHUB_TOKEN || process.env.HF_TOKEN;
+    // 關鍵修復：.trim() 會自動把多餘的隱形空格和換行刪掉
+    const rawToken = process.env.GITHUB_TOKEN || process.env.HF_TOKEN || '';
+    const token = rawToken.trim();
 
     if (!token) {
       return '【系統提示】：尚未在 Vercel 設定 GITHUB_TOKEN 環境變數！';
     }
 
-    // 改用微軟 GitHub 官方的高速穩定端點，杜絕 fetch failed
     const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -34,14 +34,16 @@ export async function askJunshi(messages) {
       }),
     });
 
-    const data = await response.json();
-
-    if (data.error) {
-      return `【AI 平台回應】：${data.error.message || JSON.stringify(data.error)}`;
+    // 如果微軟伺服器拒絕，直接把真實原因印出來
+    if (!response.ok) {
+       const errorText = await response.text();
+       return `【API 拒絕連線 ${response.status}】：${errorText}`;
     }
 
+    const data = await response.json();
     return data.choices?.[0]?.message?.content || '軍師暫無回應，請重試。';
+    
   } catch (err) {
-    return `【連線異常】：${err.message} (請確認 Vercel 的 GITHUB_TOKEN 是否正確填寫)`;
+    return `【Fetch 崩潰原因】：${err.message} \n\n👉 解決辦法：請到 Vercel 的 Environment Variables，把 GITHUB_TOKEN 刪除並「重新貼上一次」，小心不要複製到前後的空白！`;
   }
 }
