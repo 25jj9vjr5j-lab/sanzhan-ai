@@ -1,8 +1,5 @@
 'use server';
 
-// 關鍵修復：啟用 Edge 邊緣運算，突破 Vercel 免費版 10 秒強制斷線限制！
-export const runtime = 'edge';
-
 const SANZHAN_PROMPT = `
 你是一位精通手機遊戲《三國志·戰略版》的配將導師與軍師助理。
 請遵循以下規範回答：
