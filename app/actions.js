@@ -1,5 +1,8 @@
 'use server';
 
+// 關鍵修復：啟用 Edge 邊緣運算，突破 Vercel 免費版 10 秒強制斷線限制！
+export const runtime = 'edge';
+
 const SANZHAN_PROMPT = `
 你是一位精通手機遊戲《三國志·戰略版》的配將導師與軍師助理。
 請遵循以下規範回答：
@@ -11,8 +14,6 @@ const SANZHAN_PROMPT = `
 export async function askJunshi(messages) {
   try {
     const rawToken = process.env.GITHUB_TOKEN || process.env.HF_TOKEN || '';
-    
-    // 終極暴力淨化：只保留大小寫英文、數字、底線、橫線，其他隱形空格/亂碼全部砍掉！
     const token = rawToken.replace(/[^a-zA-Z0-9_-]/g, '');
 
     if (!token) {
@@ -25,7 +26,7 @@ export async function askJunshi(messages) {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Authorization': `Bearer ${token}` // 現在這個 token 絕對是 100% 乾淨的
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -46,10 +47,6 @@ export async function askJunshi(messages) {
     return data.choices?.[0]?.message?.content || '軍師暫無回應，請重試。';
     
   } catch (err) {
-    // 若依然失敗，顯示出淨化後的 Token 長度，確認是否有讀到東西
-    const rawToken = process.env.GITHUB_TOKEN || process.env.HF_TOKEN || '';
-    const token = rawToken.replace(/[^a-zA-Z0-9_-]/g, '');
-    
-    return `【強制淨化版報錯】：${err.message}\n👉 診斷：目前讀到的乾淨密碼長度為 ${token.length} 字元。如果長度為 0，代表 Vercel 環境變數真的沒設定成功。`;
+    return `【連線異常】：${err.message}\n👉 診斷：已啟用 Edge 節點，若仍顯示此錯誤，請確認手機網路狀態並稍後重試。`;
   }
 }
