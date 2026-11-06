@@ -11,14 +11,6 @@ const QUICK_QUERIES = [
   "麒麟弓龐統兵書與速度加點推薦"
 ];
 
-const SANZHAN_PROMPT = `
-你是一位精通手機遊戲《三國志·戰略版》的配將導師與軍師助理。
-請遵循以下規範回答：
-1. 戰法平替：依序給出 S 級平替、A 級平民平替、加點調整建議與實戰代價預警。
-2. 嚴禁虛構不存在的戰法或武將陣營。
-3. 全部使用條理化的 Markdown 標題與粗體標記。
-`;
-
 export default function Home() {
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
   const [input, setInput] = useState('');
@@ -40,39 +32,13 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // 讀取前端專用的環境變數
-      const rawToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN || '';
-      const token = rawToken.replace(/[^a-zA-Z0-9_-]/g, '');
-
-      if (!token) {
-        throw new Error("請先在 Vercel 設定 NEXT_PUBLIC_GITHUB_TOKEN");
-      }
-
-      // 直接由你的手機/電腦瀏覽器發起連線，徹底繞過 Vercel 伺服器！
-      const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: SANZHAN_PROMPT },
-            ...newMessages
-          ],
-          temperature: 0.3,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newMessages }),
       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`微軟拒絕連線 (${res.status}): ${errText}`);
-      }
-
-      const data = await res.json();
-      const replyText = data.choices?.[0]?.message?.content || '軍師暫無回應';
-      
+      const replyText = await res.text();
       setMessages([...newMessages, { role: 'assistant', content: replyText }]);
     } catch (e: any) {
       setMessages([...newMessages, { role: 'assistant', content: `連線失敗：${e.message}` }]);
@@ -92,7 +58,7 @@ export default function Home() {
             <h1 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
               三戰戰略軍師 AI
               <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                無敵前端版
+                在線版
               </span>
             </h1>
             <p className="text-xs text-slate-400">配將推演 · 核心平替 · 戰法聯動 · 速度加點</p>
