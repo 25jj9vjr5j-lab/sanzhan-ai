@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 export const metadata = {
   title: '三國志·戰略版 軍師 AI',
   description: '配將推演與戰法平替助手',
