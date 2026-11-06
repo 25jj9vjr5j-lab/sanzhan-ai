@@ -13,11 +13,12 @@ const SANZHAN_PROMPT = `
 
 export async function POST(req) {
   try {
-    const rawToken = process.env.GITHUB_TOKEN || process.env.HF_TOKEN || '';
+    // 優先讀取 HF_TOKEN，並自動清除隱形亂碼
+    const rawToken = process.env.HF_TOKEN || process.env.GITHUB_TOKEN || '';
     const token = rawToken.replace(/[^a-zA-Z0-9_-]/g, '');
 
     if (!token) {
-      return new Response('【系統提示】：未讀取到 GITHUB_TOKEN', { 
+      return new Response('【系統提示】：未讀取到乾淨的 HF_TOKEN', { 
         status: 200, 
         headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
       });
@@ -25,18 +26,19 @@ export async function POST(req) {
 
     const { messages } = await req.json();
 
-    // 啟動原生連線模組，徹底拋棄會報錯的 fetch
     const reply = await new Promise((resolve, reject) => {
       const payload = JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'Qwen/Qwen2.5-72B-Instruct', // 使用 Hugging Face 上的千問 72B 頂級大模型
         messages: [{ role: 'system', content: SANZHAN_PROMPT }, ...messages],
-        temperature: 0.3
+        temperature: 0.3,
+        max_tokens: 1500
       });
 
+      // 替換為 Hugging Face 伺服器
       const options = {
-        hostname: 'models.inference.ai.azure.com',
+        hostname: 'api-inference.huggingface.co',
         port: 443,
-        path: '/chat/completions',
+        path: '/v1/chat/completions',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,14 +50,12 @@ export async function POST(req) {
 
       const request = https.request(options, (res) => {
         let data = '';
-        // 接收伺服器傳回的資料碎片
         res.on('data', (chunk) => { data += chunk; });
-        // 接收完成，開始組合解析
         res.on('end', () => {
           try {
             const parsed = JSON.parse(data);
             if (res.statusCode !== 200) {
-              resolve(`【微軟伺服器報錯 ${res.statusCode}】：${parsed.error?.message || data}`);
+              resolve(`【HuggingFace 報錯 ${res.statusCode}】：${parsed.error?.message || parsed.error || data}`);
             } else {
               resolve(parsed.choices?.[0]?.message?.content || '軍師無回應');
             }
@@ -65,10 +65,7 @@ export async function POST(req) {
         });
       });
 
-      // 如果底層網路真的斷線，才會觸發這裡
       request.on('error', (e) => reject(e));
-      
-      // 送出請求
       request.write(payload);
       request.end();
     });
